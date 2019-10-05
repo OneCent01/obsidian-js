@@ -1,7 +1,7 @@
 # Obsidian-JS
 ## *Fortify your Node server with rock hard authentication*
 
-<img style="position: absolute; right: 0px;" src="Obsidian.png"/>
+<img style="position: absolute; right: 0px;" src="https://gamepedia.cursecdn.com/minecraft_gamepedia/2/23/Obsidian.png"/>
 
 A light library of pure functions useful for secure server-side development in Node.JS. Provides a set of easy-to-use tools that allows for rapid development of secure servers. It relies on argon2 for password hashing/verification and jsonwebtoken for token generation/authentication. 
 
