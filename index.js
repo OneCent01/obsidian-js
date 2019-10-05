@@ -30,18 +30,25 @@ const defaultSaltOpts = {
 const secureSalt = async (opts=defaultSaltOpts) => await secureRandom(opts.length, opts.type)
 
 const jwt  =  require('jsonwebtoken')
-const SECRET_KEY = "secretkey23456"
+const SECRET_KEY = "AlexJonesDidNothingWrong" // shhh don't tell
 const expiresInDefault = 24 * 60 * 60
 const defaultTokenOpts = {
-	expiresIn: expiresInDefault, 
+	signOpts: {
+		expiresIn: expiresInDefault, 
+		algorithm: 'HS256' // use HMAC SHA-256 encryption algorithm
+	}
 	secretKey: SECRET_KEY
 }
-const issueToken = (id, opts=defaultTokenOpts) => jwt.sign(
+const issueToken = (id, opts={}) => jwt.sign(
 	{ id }, // paylod
-	opts.secretKey, // private key
-	{ expiresIn: opts.expiresIn } // sign options
+	opts.secretKey || defaultTokenOpts.secretKey, // private key
+	{ // sign options
+		...defaultTokenOpts, 
+		...((opts.signOpts && typeof opts.signOpts === 'object') ? opts.signOpts : {}) 
+	} 
 )
 
+// Node JS base 64 conversion utilities
 var base64 = {
 	encode: unencoded => Buffer.from(unencoded || '').toString('base64'),
 	decode: encoded => Buffer.from(encoded || '', 'base64').toString('utf8'),
@@ -49,37 +56,90 @@ var base64 = {
 	urlDecode: encoded => base64.decode(`${encoded.replace('-', '+').replace('_', '/')}${new Array(encoded % 4).fill('=').join('')}`)
 }
 
-const verifyToken = (token, opts=defaultTokenOpts) => {
+const defaultVerifyTokenOpts = {
+	headers: {
+		"alg": "HS256",
+		"typ": "JWT"
+	},
+	expiresIn: expiresInDefault,
+	secretKey: SECRET_KEY
+}
+const verifyToken = (token, opts={}) => {
 	try {
 		const { expiresIn, secretKey } = opts
-		const decodedPayload = jwt.verify(token, secretKey, { expiresIn })
+		const decodedPayload = jwt.verify(
+			token, 
+			secretKey || defaultVerifyTokenOpts.secretKey, 
+			{ expiresIn: expiresIn || defaultVerifyTokenOpts.expiresIn  }
+		)
 		const payload = base64.urlEncode(JSON.stringify(decodedPayload))
 		const headers = base64.urlEncode(JSON.stringify({
-			"alg": "HS256",
-			"typ": "JWT"
+			...defaultVerifyTokenOpts.headers, 
+			...(opts.headers && typeof opts.headers === 'object' ? opts.headers : {})
 		}))
 		const tokenSig = token.split('.')[2]
-		const signiature = crypto.createHmac('SHA256', secretKey)
-		.update(`${headers}.${payload}`).digest('base64')
-		.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
-		return {
-			success: signiature === tokenSig, 
-			user: decodedPayload
-		}
+		const signiature = (
+			crypto
+			.createHmac('SHA256', secretKey)
+			.update(`${headers}.${payload}`)
+			.digest('base64')
+			.replace(/=/g, "")
+			.replace(/\+/g, "-")
+			.replace(/\//g, "_")
+		)
+		return (
+			signiature === tokenSig
+			? {success: true, user: decodedPayload}
+			: {success: false, error: 'INVALID_TOKEN'}
+		)
 	} catch(e) {
-		return {
-			success: false
-		}
+		return {success: false, error: e}
 	}
 }
 
-const argonGems = {
+const defaultReqVerificationOpts = {
+	unrestrictedPaths: [],
+	verify: verifyToken
+}
+const verifyRequest = (defaultReqVerificationOpts) => (req, res, next) => {
+	const path = req.path 
+	const {unrestrictedPaths, verify} = defaultReqVerificationOpts
+	// if the use is attempting to ping one of the unrestricted
+	// endpoints, let them through. Otherwise, 
+	if(!unrestrictedPaths.includes(path)) {
+		const headers = req.headers
+		const token = headers.authorization
+		// check the whether the token was sent in and if it's valid
+		const verification = (token && token.length && verify(token))
+		if(verification) {
+			if(verification.success) {
+				// attach the user data to the request object passed 
+				// to the next endpoint
+				req.user = verification.user.id
+				next()
+			} else {
+				res.send(JSON.stringify(verification))
+			}
+		} else {
+			res.send(JSON.stringify({
+				success: false,
+				error: 'TOKENLESS'
+			}))
+		}
+	} else {
+		next()
+	}
+
+}
+
+const obsidian = {
 	secureRandom,
 	secureSalt,
 	hash,
 	verify,
 	issueToken,
-	verifyToken
+	verifyToken,
+	verifyRequest
 }
 
-module.exports = argonGems
+module.exports = obsidian
