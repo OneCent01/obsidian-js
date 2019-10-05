@@ -1,6 +1,7 @@
 # Obsidian-JS
 ## *Fortify your server with rock hard authentication*
-![obsidian](Obsidian.png)
+
+<img style="float: right;" src="Obsidian.png"/>
 
 A light library of pure functions useful for secure server-side development in Node.JS. Specifically designed to provide a set of easy-to-use tools that allows for rapid development of secure deployable servers. 
 
