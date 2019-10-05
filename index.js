@@ -94,14 +94,19 @@ const defaultTokenOpts = {
 					signOpts: {expiresIn: (24 * 60)}
 				}
 */
-const issueToken = (data, opts={}) => jwt.sign(
-	{ data }, // paylod
-	opts.secretKey || defaultTokenOpts.secretKey, // private key
-	{ // sign options
-		...defaultTokenOpts, 
-		...((opts.signOpts && typeof opts.signOpts === 'object') ? opts.signOpts : {}) 
+const issueToken = (data, opts={}) => {
+	const signOpts = { // sign options
+		...defaultTokenOpts.signOpts, 
+		...(typeof opts.signOpts === 'object' ? opts.signOpts : {}) 
 	} 
-)
+	const token = jwt.sign(
+		{ data }, // paylod
+		opts.secretKey || defaultTokenOpts.secretKey, // private key
+		signOpts
+	)
+
+	return token
+}
 
 // Node JS base 64 conversion utilities
 var base64 = {
@@ -188,14 +193,21 @@ const defaultReqVerificationOpts = {
 			verification function to pass the token through. (MUST return an object with a 
 			success property)
 */
-const verifyRequest = (opts) => (req, res, next) => {
+const verifyRequest = (opts={}) => (req, res, next) => {
 	const path = req.path 
-	const {unrestrictedPaths, verify} = {...defaultReqVerificationOpts, ...opts}
+	const {
+		unrestrictedPaths, 
+		verify
+	} = {
+		...defaultReqVerificationOpts, 
+		...opts
+	}
 	// if the use is attempting to ping one of the unrestricted
 	// endpoints, let them through. Otherwise, 
 	if(!unrestrictedPaths.includes(path)) {
 		const headers = req.headers
 		const token = headers.authorization
+		console.log('TOKEN: ', token)
 		// check the whether the token was sent in and if it's valid
 		const verification = (token && token.length && verify(token))
 		if(verification) {
@@ -219,7 +231,8 @@ const verifyRequest = (opts) => (req, res, next) => {
 
 }
 
-const obsidian = {
+
+module.exports = {
 	secureRandom,
 	secureSalt,
 	hash,
@@ -228,5 +241,3 @@ const obsidian = {
 	verifyToken,
 	verifyRequest
 }
-
-module.exports = obsidian
