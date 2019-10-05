@@ -1,6 +1,8 @@
 # Obsidian-JS
+## *Fortify your server with rock hard authentication*
+![obsidian](Obsidian.png)
 
-A light library of pure functions useful for secure server-side development in Node.JS. Specifically designed to provide a set of easy-to-use tools that allows for rapid development of secure deployable servers
+A light library of pure functions useful for secure server-side development in Node.JS. Specifically designed to provide a set of easy-to-use tools that allows for rapid development of secure deployable servers. 
 
 ## Installing
 
@@ -48,15 +50,18 @@ async function securely generating random a salt of given length and type using 
 
 	-type: string, the type of salt desired, currently only supports 'hex' and 'int' types
 
+
 **hash(saltedPass)**
 
 async hashing function using the argon2 algorithm
 
 	-saltedPass: string, the user's password concatenated with a salt
 
+
 	Only call this function when setting a password.
 
 	Saving plaintext passwords is VERY BAD!!
+
 
 	To avoid saving user passwords, save the salt and returned hash in association with
 	the user. These will be used later for identity verification without exposing
@@ -69,6 +74,7 @@ async function verifying the given salted password is the same as the one used t
 	-saltedPass: string, the user's entered password concatenated with a salt
 
 	-hash: string, argon2 hash saved in association with the user
+
 
 	When a login request is made, the server needs to ensure the person requesting
 	the resource is who they say they are. Fetch the user's login info from your

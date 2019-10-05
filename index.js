@@ -207,7 +207,6 @@ const verifyRequest = (opts={}) => (req, res, next) => {
 	if(!unrestrictedPaths.includes(path)) {
 		const headers = req.headers
 		const token = headers.authorization
-		console.log('TOKEN: ', token)
 		// check the whether the token was sent in and if it's valid
 		const verification = (token && token.length && verify(token))
 		if(verification) {
@@ -230,7 +229,6 @@ const verifyRequest = (opts={}) => (req, res, next) => {
 	}
 
 }
-
 
 module.exports = {
 	secureRandom,
