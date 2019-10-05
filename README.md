@@ -114,7 +114,7 @@ ensures the token is valid, has not expired, and has not been tampered with
 	-opts: object, can contain two sub objects to overwrite defaults. MUST match the parameters used when generating the hash for verification to succeed. 
 
 ```
-\\ example call: 
+// example call: 
 verifyToken(<TOKEN>, {
 	headerOpts: {alg: 'RS256'},
 	tokenOpts: {
