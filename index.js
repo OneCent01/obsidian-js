@@ -80,7 +80,7 @@ const defaultTokenOpts = {
 	signOpts: {
 		expiresIn: expiresInDefault, 
 		algorithm: 'HS256' // use HMAC SHA-256 encryption algorithm
-	}
+	},
 	secretKey: SECRET_KEY
 }
 
