@@ -1,5 +1,11 @@
 const crypto = require('crypto')
-const secureRandom = (length, type) => new Promise((resolve, reject) => {
+
+/*
+	@secureRandom: securely generate random sequences using Node's crypto module
+		*length: integer, how long the returned sequence should be
+		*type: stirng, supports hex strings ('hex') and integers ('int')
+*/
+const secureRandom = (length=0, type='hex') => new Promise((resolve, reject) => {
 	crypto.randomBytes(Math.ceil(length/2), (err, buff) => {
 		if(err !== null) {
 			reject(err)
@@ -21,12 +27,50 @@ const secureRandom = (length, type) => new Promise((resolve, reject) => {
 })
 
 const argon2 = require('argon2')
+
+/*
+	@hash: async hashing function using the argon2 algorithm
+		*saltedPass: string, the user's password concatenated with a salt
+
+	Only call this function when setting a password.
+
+	Saving plaintext passwords is VERY BAD!!
+
+	To avoid saving user passwords, save the salt and returned hash in association with
+	the user. These will be used later for identity verification without exposing
+	the original password. 
+*/
 const hash = async (saltedPass) => await argon2.hash(saltedPass)
+
+/*
+	@verify: async function verifying the given salted password is the same as the 
+			one used to generate it
+		*saltedPass: string, the user's entered password concatenated with a salt
+		*hash: string, argon2 hash saved in association with the user
+
+	When a login request is made, the server needs to ensure the person requesting
+	the resource is who they say they are. Fetch the user's login info from your
+	database, which should include a hash and salt. 
+
+	DO NOT try and re-hash the salted password and compare it to the previous hash,
+	that won't work. There's a degree of random in the hashing algorithm, meaning 
+	the same password won't hash into the same thing twice. 
+
+	argon2's verify takes this into account and can ensure the given password was 
+	used to generate the hash using magic. 
+*/
 const verify = async (saltedPass, hash) => await argon2.verify(hash, saltedPass)
 const defaultSaltOpts = {
 	length: 16,
 	type: 'hex'
 }
+
+/*
+	@secureSalt: async function securely generating random a salt of given length 
+			and type using Node's crypto module
+		*length: integer, how long the returned salt should be
+		*type: string, the type of salt desired, currently only supports 'hex' and 'int' types
+*/
 const secureSalt = async (opts=defaultSaltOpts) => await secureRandom(opts.length, opts.type)
 
 const jwt  =  require('jsonwebtoken')
@@ -39,8 +83,19 @@ const defaultTokenOpts = {
 	}
 	secretKey: SECRET_KEY
 }
-const issueToken = (id, opts={}) => jwt.sign(
-	{ id }, // paylod
+
+/*
+	@issueToken: synchronously generates and returns a JSON web token
+		*data: ANY, identifying information required for user permissions
+				-> the payload can be stringifiable value or data structure
+		*opts: object, contains the secret key and signing options
+				-> example: {
+					secretKey: 'GlowInTheDarkDemons',
+					signOpts: {expiresIn: (24 * 60)}
+				}
+*/
+const issueToken = (data, opts={}) => jwt.sign(
+	{ data }, // paylod
 	opts.secretKey || defaultTokenOpts.secretKey, // private key
 	{ // sign options
 		...defaultTokenOpts, 
@@ -57,31 +112,53 @@ var base64 = {
 }
 
 const defaultVerifyTokenOpts = {
-	headers: {
+	headerOpts: {
 		"alg": "HS256",
 		"typ": "JWT"
 	},
-	expiresIn: expiresInDefault,
-	secretKey: SECRET_KEY
+	tokenOpts: {
+		expiresIn: expiresInDefault,
+		secretKey: SECRET_KEY
+	}
 }
+
+/*
+	@verifyToken: ensures the token is valid, has not expired, and has not been tampered with
+		*token: json web token, should have three character sequences sepearated by periods
+		*opts: object, can contain two sub objects to overwrite defaults. MUST match the parameters
+			used when generating the hash for verification to succeed. 
+				-> example: {
+					headerOpts: {alg: 'RS256'},
+					tokenOpts: {
+						expiresIn: (24 * 60),
+						secretKey: 'GlowInTheDarkDemons'
+					}
+				}
+*/
 const verifyToken = (token, opts={}) => {
 	try {
-		const { expiresIn, secretKey } = opts
+		const { 
+			expiresIn, 
+			secretKey 
+		} = {
+			...defaultVerifyTokenOpts.tokenOpts, 
+			...(typeof opts.tokenOpts === 'object' ? opts.tokenOpts : {})
+		}
 		const decodedPayload = jwt.verify(
 			token, 
-			secretKey || defaultVerifyTokenOpts.secretKey, 
-			{ expiresIn: expiresIn || defaultVerifyTokenOpts.expiresIn  }
+			secretKey, 
+			{ expiresIn }
 		)
 		const payload = base64.urlEncode(JSON.stringify(decodedPayload))
-		const headers = base64.urlEncode(JSON.stringify({
-			...defaultVerifyTokenOpts.headers, 
-			...(opts.headers && typeof opts.headers === 'object' ? opts.headers : {})
+		const header = base64.urlEncode(JSON.stringify({
+			...defaultVerifyTokenOpts.headerOpts, 
+			...(typeof opts.headerOpts === 'object' ? opts.headerOpts : {})
 		}))
 		const tokenSig = token.split('.')[2]
 		const signiature = (
 			crypto
 			.createHmac('SHA256', secretKey)
-			.update(`${headers}.${payload}`)
+			.update(`${header}.${payload}`)
 			.digest('base64')
 			.replace(/=/g, "")
 			.replace(/\+/g, "-")
@@ -101,9 +178,19 @@ const defaultReqVerificationOpts = {
 	unrestrictedPaths: [],
 	verify: verifyToken
 }
-const verifyRequest = (defaultReqVerificationOpts) => (req, res, next) => {
+
+/*
+	@verifyRequest: middleware function for Express.JS check the token sent in with
+			the request. If it's invalid, expired, or been tampered with, immediately
+			reject the request. Otherwise, the user is valid. Allow the request to continue 
+			falling through the Express functions.
+		*opts: object, should contain an array at unrestrictedPaths and can be passed a 
+			verification function to pass the token through. (MUST return an object with a 
+			success property)
+*/
+const verifyRequest = (opts) => (req, res, next) => {
 	const path = req.path 
-	const {unrestrictedPaths, verify} = defaultReqVerificationOpts
+	const {unrestrictedPaths, verify} = {...defaultReqVerificationOpts, ...opts}
 	// if the use is attempting to ping one of the unrestricted
 	// endpoints, let them through. Otherwise, 
 	if(!unrestrictedPaths.includes(path)) {
@@ -115,7 +202,7 @@ const verifyRequest = (defaultReqVerificationOpts) => (req, res, next) => {
 			if(verification.success) {
 				// attach the user data to the request object passed 
 				// to the next endpoint
-				req.user = verification.user.id
+				req.user = verification.user
 				next()
 			} else {
 				res.send(JSON.stringify(verification))
