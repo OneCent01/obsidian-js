@@ -22,7 +22,7 @@ const {
 	secureRandom,
 	secureSalt,
 	hash,
-	verify,
+	verifyHash,
 	issueToken,
 	verifyToken,
 	verifyRequest
@@ -69,7 +69,7 @@ async hashing function using the argon2 algorithm
 	the user. These will be used later for identity verification without exposing
 	the original password.
 
-**verify(saltedPass, hash)**
+**verifyHash(saltedPass, hash)**
 
 async function verifying the given salted password is the same as the one used to generate it
 

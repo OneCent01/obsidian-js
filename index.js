@@ -59,7 +59,7 @@ const hash = async (saltedPass) => await argon2.hash(saltedPass)
 	argon2's verify takes this into account and can ensure the given password was 
 	used to generate the hash using magic. 
 */
-const verify = async (saltedPass, hash) => await argon2.verify(hash, saltedPass)
+const verifyHash = async (saltedPass, hash) => await argon2.verify(hash, saltedPass)
 const defaultSaltOpts = {
 	length: 16,
 	type: 'hex'
@@ -234,8 +234,9 @@ module.exports = {
 	secureRandom,
 	secureSalt,
 	hash,
-	verify,
 	issueToken,
 	verifyToken,
-	verifyRequest
+	verifyRequest,
+	verifyHash,
+	verify: verifyHash,
 }
