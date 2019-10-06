@@ -20,7 +20,7 @@ const secureRandom = (length=0, type='hex') => new Promise((resolve, reject) => 
 				const sizedRandInt = randInt.toString().slice(0, length)
 				resolve(+sizedRandInt)
 			} else {
-				reject('UNKNOWN `type` REQUESTED IN `secureRandom` FUCNTION')
+				reject(false, 'UNKNOWN `type` REQUESTED IN `secureRandom` FUCNTION')
 			}
 		}
 	})
@@ -71,7 +71,10 @@ const defaultSaltOpts = {
 		*length: integer, how long the returned salt should be
 		*type: string, the type of salt desired, currently only supports 'hex' and 'int' types
 */
-const secureSalt = async (opts=defaultSaltOpts) => await secureRandom(opts.length, opts.type)
+const secureSalt = async (opts) => await secureRandom(
+	opts.length && opts.length > 0 ? opts.length : defaultSaltOpts.length, 
+	opts.type || defaultSaltOpts.type
+)
 
 const jwt  =  require('jsonwebtoken')
 const SECRET_KEY = "AlexJonesDidNothingWrong" // shhh don't tell
@@ -175,7 +178,7 @@ const verifyToken = (token, opts={}) => {
 			: {success: false, error: 'INVALID_TOKEN'}
 		)
 	} catch(e) {
-		return {success: false, error: e}
+		return {success: false, error: JSON.stringify(e)}
 	}
 }
 
@@ -195,20 +198,16 @@ const defaultReqVerificationOpts = {
 */
 const verifyRequest = (opts={}) => (req, res, next) => {
 	const path = req.path 
-	const {
-		unrestrictedPaths, 
-		verify
-	} = {
-		...defaultReqVerificationOpts, 
-		...opts
-	}
+	const unrestrictedPaths = opts.unrestrictedPaths || defaultReqVerificationOpts.unrestrictedPaths
+	const verify = opts.verify || defaultReqVerificationOpts.verify
+	const verifyOpts = opts.verifyOpts || {}
 	// if the use is attempting to ping one of the unrestricted
 	// endpoints, let them through. Otherwise, 
 	if(!unrestrictedPaths.includes(path)) {
 		const headers = req.headers
 		const token = headers.authorization
 		// check the whether the token was sent in and if it's valid
-		const verification = (token && token.length && verify(token))
+		const verification = (token && token.length && verify(token, verifyOpts))
 		if(verification) {
 			if(verification.success) {
 				// attach the user data to the request object passed 
