@@ -182,10 +182,29 @@ const verifyToken = (token, opts={}) => {
 	}
 }
 
-const defaultReqVerificationOpts = {
-	unrestrictedPaths: [],
-	verify: verifyToken
+const validSettings = ['DENY', 'SAMEORIGIN']
+
+const validFrameOptSetting = (opts={}) => {
+	let setting = (
+		opts.setting 
+		&& typeof setting === 'string' 
+		&& opts.setting.toUpperCase()
+	)
+	
+	if(setting === 'ALLOW-FROM') {
+		const validDomain = (
+			opts.domain 
+			&& typeof opts.domain === 'string' 
+			&& opts.domain.length
+		)
+		setting = validDomain ? `${setting} ${opts.domain}` : 'SAMEORIGIN'
+	} else if(!validSettings.includes(setting)) {
+		setting = 'SAMEORIGIN'
+	} 
+
+	return setting
 }
+
 
 /*
 	@verifyRequest: middleware function for Express.JS check the token sent in with
@@ -196,18 +215,25 @@ const defaultReqVerificationOpts = {
 			verification function to pass the token through. (MUST return an object with a 
 			success property)
 */
+
+// check the whether the token was sent in and if it's valid
+const verifyRequestToken = (token, verify=verifyToken, opts={}) => (
+	token 
+	&& token.length 
+	&& verify(token, opts)
+)
+
 const verifyRequest = (opts={}) => (req, res, next) => {
-	const path = req.path 
-	const unrestrictedPaths = opts.unrestrictedPaths || defaultReqVerificationOpts.unrestrictedPaths
-	const verify = opts.verify || defaultReqVerificationOpts.verify
-	const verifyOpts = opts.verifyOpts || {}
+	const unrestrictedPaths = opts.unrestrictedPaths || []
+	const isUnrestricted = unrestrictedPaths.includes(req.path)
 	// if the use is attempting to ping one of the unrestricted
 	// endpoints, let them through. Otherwise, 
-	if(!unrestrictedPaths.includes(path)) {
+	if(!isUnrestricted) {
+		// not unrestricted, now verify the token....
 		const headers = req.headers
 		const token = headers.authorization
-		// check the whether the token was sent in and if it's valid
-		const verification = (token && token.length && verify(token, verifyOpts))
+		const verification = verifyRequestToken(token, opts.verify, opts.verifyOpts)
+		
 		if(verification) {
 			if(verification.success) {
 				// attach the user data to the request object passed 
@@ -229,6 +255,46 @@ const verifyRequest = (opts={}) => (req, res, next) => {
 
 }
 
+
+const setFrameHeader = (opts={}) => (req, res, next) => {
+	res.setHeader('X-Frame-Options', validFrameOptSetting(opts))
+	next()
+}
+
+const obsidianWare = (opts={}) => (req, res, next) => {
+	const disableFrameOptionSet = typeof opts.disableFrameSecurity === 'boolean' ? opts.disableFrameSecurity : false
+	if(!disableFrameOptionSet) {
+		res.setHeader('X-Frame-Options', validFrameOptSetting(opts.frameOpts))
+	}
+	
+	const isUnrestricted = (opts.unrestrictedPaths || []).includes(req.path)
+	// if the use is attempting to ping one of the unrestricted
+	// endpoints, let them through. Otherwise, 
+	if(!isUnrestricted) {
+
+		const headers = req.headers
+		const token = headers.authorization
+		const verification = verifyRequestToken(token, opts.verify, opts.verifyOpts)
+		if(verification) {
+			if(verification.success) {
+				// attach the user data to the request object passed 
+				// to the next endpoint
+				req.user = verification.user
+				next()
+			} else {
+				res.send(JSON.stringify(verification))
+			}
+		} else {
+			res.send(JSON.stringify({
+				success: false,
+				error: 'TOKENLESS'
+			}))
+		}
+	} else {
+		next()
+	}
+}
+
 module.exports = {
 	secureRandom,
 	secureSalt,
@@ -237,5 +303,8 @@ module.exports = {
 	verifyToken,
 	verifyRequest,
 	verifyHash,
-	verify: verifyHash,
+	validFrameOptSetting,
+	setFrameHeader,
+	obsidianWare,
+	verify: verifyHash
 }

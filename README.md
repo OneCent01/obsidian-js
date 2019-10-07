@@ -164,19 +164,21 @@ verifyToken(<TOKEN>, {
 })
 ```
 
-**verifyRequest**
+**verifyRequest(opts)**
 
-Middleware function for Express.JS check the token sent in with the request. If it's invalid, expired, or been tampered with, immediately reject the request. Otherwise, the user is valid. Allow the request to continue  falling through the Express functions.
+Middleware returning function for Express.JS check the token sent in with the request. If it's invalid, expired, or been tampered with, immediately reject the request. Otherwise, the user is valid. Allow the request to continue  falling through the Express functions. 
 	
-	-opts: object, must contain an array of strings at `unrestrictedPaths`. Optional props:
+	-opts: object, _should_ contain an array of strings at `unrestrictedPaths`. Optional props:
 		*verify: function, must return an object with a success property. uses `obsidian.verifyToken` by default
-		*verifyOpts: an object to be passed to the verfy function as the second argument after the token
+		*verifyOpts: object, passed to the verfy function as the second argument after the token string
+		*disableSecurity: boolean, prevent security measures from being applied to the response. False by default
+		*frameOpts: object, used when securirty is enabled to change default X-Frame-Options header setting to something other than 'SAMEORIGIN' (must be 'DENY' or 'ALLOW-ORIGIN' with a domain)
 
 	-> returns a function that accepts three arguments (req, res, next) which ensures the token attached to the request's Authorization header is valid
 
 
 ```
-// example call:
+// example usage:
 
 const unrestrictedPaths = ['/auth-user', '/add-user']
 const verificationMiddleware = verifyRequest({ unrestrictedPaths })
@@ -185,4 +187,62 @@ const verificationMiddleware = verifyRequest({ unrestrictedPaths })
 // to check the senders credentials (token) and possibly  
 // terminate the endpoint fallthrough
 app.use(verificationMiddleware)
+```
+
+**validFrameOptSetting(opts)**
+
+Synchronous function returning a string that's a valid X-Frame-Options header setting. The purpose of this is to prevent any enexpected iFrames from loading. iFrames are particularly useful in clickjacking, an attack vector where the user's action triggers the event listener on the invisible iFrame. 
+
+	-opts: object, optional parameters for the setting
+		*setting: string, must be 'DENY', 'SAMEORIGIN', or 'ALLOW-FROM'. If 'ALLOW-FROM', opts MUST also contain domain,
+		*donain: required when setting frame option to 'ALLOW-FROM'. Ignored in all other cases, setting changed to 'SAMEORIGIN' fron 'ALLOW-FROM' if a string is not passed in. 
+
+**setFrameHeader(opts)**
+
+Middleware returning function that will set the X-Frame-Options in the header to the given option. If no option is supplied, or the option supplied is invalid, the option 'SAMEORIGIN' will be defaulted to. 
+
+	-opts: object, optional settings:
+		*setting: string, must be 'DENY', 'SAMEORIGIN', or 'ALLOW-FROM'. If 'ALLOW-FROM', opts MUST also contain domain,
+		*donain: required when setting frame option to 'ALLOW-FROM'. Ignored in all other cases, setting changed to 'SAMEORIGIN' fron 'ALLOW-FROM' if a string is not passed in. 
+
+	-> returns a function that accepts three arguments (req, res, next) which sets the X-Frame-Options header to 'SAMEORIGIN' by default, or will set it to the option specified in the header opt argument. 
+
+```
+// example usage: 
+
+const setFrame = setFrameHeader({setting: 'DENY'})
+app.use(setFrame)
+
+```
+
+**obsidianWare(opts)**
+
+Middleware returning function validating tokens and applying security measures to the response. Currently the only security measure applied to the reponse is setting the X-Frame-Options in the header (see `validFrameOptSetting`).
+
+	-opts: object, optional settings:
+		*unrestrictedPaths: array of strings, paths to ignore tokens on. i.e. ['/add-user', '/auth-user']
+		*disableFrameSecurity: boolean, setting this to true prevents X-Frame-Options from being set
+		*frameOpts: object, can contain a setting, must contain a domain if setting is 'ALLOW-FROM'
+		*verify: function, must return an object with a success property. uses `obsidian.verifyToken` by default
+		*verifyOpts: object, passed to the verfy function as the second argument after the token string. Matches the options used when generating the token. 
+
+	-> returns a middleware function performing token validation on the request and applying security measures to the response 
+
+
+```
+// example usage:
+
+const obsidianGate = obsidianWare({
+	frameOpts: {
+		setting: 'ALLOW-FROM',
+		domain: 'https://yahoo.com'
+	},
+	verifyOpts: {
+		headerOpts: {alg: 'RS256'},
+		tokenOpts: {
+			expiresIn: (24 * 60),
+			secretKey: 'GlowInTheDarkDemons'
+		}
+	}
+})
 ```
