@@ -31,14 +31,6 @@ const argon2 = require('argon2')
 /*
 	@hash: async hashing function using the argon2 algorithm
 		*saltedPass: string, the user's password concatenated with a salt
-
-	Only call this function when setting a password.
-
-	Saving plaintext passwords is VERY BAD!!
-
-	To avoid saving user passwords, save the salt and returned hash in association with
-	the user. These will be used later for identity verification without exposing
-	the original password. 
 */
 const hash = async (saltedPass) => await argon2.hash(saltedPass)
 
@@ -47,17 +39,6 @@ const hash = async (saltedPass) => await argon2.hash(saltedPass)
 			one used to generate it
 		*saltedPass: string, the user's entered password concatenated with a salt
 		*hash: string, argon2 hash saved in association with the user
-
-	When a login request is made, the server needs to ensure the person requesting
-	the resource is who they say they are. Fetch the user's login info from your
-	database, which should include a hash and salt. 
-
-	DO NOT try and re-hash the salted password and compare it to the previous hash,
-	that won't work. There's a degree of random in the hashing algorithm, meaning 
-	the same password won't hash into the same thing twice. 
-
-	argon2's verify takes this into account and can ensure the given password was 
-	used to generate the hash using magic. 
 */
 const verifyHash = async (saltedPass, hash) => await argon2.verify(hash, saltedPass)
 const defaultSaltOpts = {
@@ -145,40 +126,20 @@ const defaultVerifyTokenOpts = {
 */
 const verifyToken = (token, opts={}) => {
 	try {
-		const { 
-			expiresIn, 
-			secretKey 
-		} = {
+		const tokenOpts = {
 			...defaultVerifyTokenOpts.tokenOpts, 
 			...(typeof opts.tokenOpts === 'object' ? opts.tokenOpts : {})
 		}
+		const { expiresIn, secretKey } = tokenOpts
+
 		const decodedPayload = jwt.verify(
 			token, 
 			secretKey, 
 			{ expiresIn }
 		)
-		const payload = base64.urlEncode(JSON.stringify(decodedPayload))
-		const header = base64.urlEncode(JSON.stringify({
-			...defaultVerifyTokenOpts.headerOpts, 
-			...(typeof opts.headerOpts === 'object' ? opts.headerOpts : {})
-		}))
-		const tokenSig = token.split('.')[2]
-		const signiature = (
-			crypto
-			.createHmac('SHA256', secretKey)
-			.update(`${header}.${payload}`)
-			.digest('base64')
-			.replace(/=/g, "")
-			.replace(/\+/g, "-")
-			.replace(/\//g, "_")
-		)
-		return (
-			signiature === tokenSig
-			? {success: true, user: decodedPayload}
-			: {success: false, error: 'INVALID_TOKEN'}
-		)
+		return {success: true, user: decodedPayload}
 	} catch(e) {
-		return {success: false, error: JSON.stringify(e)}
+		return {success: false, error: e}
 	}
 }
 
