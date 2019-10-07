@@ -5,6 +5,7 @@
 
 A light library of pure functions useful for secure server-side development in Node.JS. Provides a set of easy-to-use tools that allows for rapid development of secure servers. It relies on argon2 for password hashing/verification and jsonwebtoken for token generation/authentication. 
 
+Obsidian's full potential is realized when used in conjunction with an web API framework, such as ExpressJS. [A basic extensible server with secure user adding and authenticating can be accomplished with these two libraries in about 80 lines of code!](https://gist.github.com/OneCent01/fa52829c9770472d16a5af20b6f75a16)
 
 ## Installing
 
@@ -239,6 +240,7 @@ Middleware returning function validating tokens and applying security measures t
 // example usage:
 
 const obsidianGate = obsidianWare({
+	unrestrictedPaths: ['/', '/add-user'],
 	frameOpts: {
 		setting: 'ALLOW-FROM',
 		domain: 'https://yahoo.com'
