@@ -217,13 +217,13 @@ const validFrameOptSetting = (opts={}) => {
 */
 
 // check the whether the token was sent in and if it's valid
-const verifyRequestToken = (token, verify=verifyToken, opts={}) => (
+const verifyReqToken = (token, verify=verifyToken, opts={}) => (
 	token 
 	&& token.length 
 	&& verify(token, opts)
 )
 
-const verifyRequest = (opts={}) => (req, res, next) => {
+const verifyReqTokenWare = (opts={}) => (req, res, next) => {
 	const unrestrictedPaths = opts.unrestrictedPaths || []
 	const isUnrestricted = unrestrictedPaths.includes(req.path)
 	// if the use is attempting to ping one of the unrestricted
@@ -232,7 +232,7 @@ const verifyRequest = (opts={}) => (req, res, next) => {
 		// not unrestricted, now verify the token....
 		const headers = req.headers
 		const token = headers.authorization
-		const verification = verifyRequestToken(token, opts.verify, opts.verifyOpts)
+		const verification = verifyReqToken(token, opts.verify, opts.verifyOpts)
 		
 		if(verification) {
 			if(verification.success) {
@@ -256,7 +256,7 @@ const verifyRequest = (opts={}) => (req, res, next) => {
 }
 
 
-const setFrameHeader = (opts={}) => (req, res, next) => {
+const frameOptionsWare = (opts={}) => (req, res, next) => {
 	res.setHeader('X-Frame-Options', validFrameOptSetting(opts))
 	next()
 }
@@ -274,7 +274,7 @@ const obsidianWare = (opts={}) => (req, res, next) => {
 
 		const headers = req.headers
 		const token = headers.authorization
-		const verification = verifyRequestToken(token, opts.verify, opts.verifyOpts)
+		const verification = verifyReqToken(token, opts.verify, opts.verifyOpts)
 		if(verification) {
 			if(verification.success) {
 				// attach the user data to the request object passed 
@@ -299,12 +299,15 @@ module.exports = {
 	secureRandom,
 	secureSalt,
 	hash,
+	verifyHash,
 	issueToken,
 	verifyToken,
-	verifyRequest,
-	verifyHash,
+	verifyReqToken,
 	validFrameOptSetting,
-	setFrameHeader,
 	obsidianWare,
+	verifyReqTokenWare,
+	frameOptionsWare,
+	verifyRequest: verifyReqTokenWare,
+	setFrameHeader: frameOptionsWare,
 	verify: verifyHash
 }

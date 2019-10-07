@@ -22,13 +22,14 @@ const {
 	secureRandom,
 	secureSalt,
 	hash,
+	verifyHash,
 	issueToken,
 	verifyToken,
-	verifyRequest,
-	verifyHash,
+	verifyReqToken,
 	validFrameOptSetting,
-	setFrameHeader,
-	obsidianWare
+	obsidianWare,
+	verifyReqTokenWare,
+	frameOptionsWare
 } = obsidian
 ```
 
@@ -167,7 +168,7 @@ verifyToken(<TOKEN>, {
 })
 ```
 
-**verifyRequest(opts)**
+**verifyReqTokenWare(opts)**
 
 Middleware returning function for Express.JS check the token sent in with the request. If it's invalid, expired, or been tampered with, immediately reject the request. Otherwise, the user is valid. Allow the request to continue  falling through the Express functions. 
 	
@@ -184,7 +185,7 @@ Middleware returning function for Express.JS check the token sent in with the re
 // example usage:
 
 const unrestrictedPaths = ['/auth-user', '/add-user']
-const verificationMiddleware = verifyRequest({ unrestrictedPaths })
+const verificationMiddleware = verifyReqTokenWare({ unrestrictedPaths })
 
 // every request will be passed through this endpoint,
 // to check the senders credentials (token) and possibly  
@@ -200,7 +201,9 @@ Synchronous function returning a string that's a valid X-Frame-Options header se
 		*setting: string, must be 'DENY', 'SAMEORIGIN', or 'ALLOW-FROM'. If 'ALLOW-FROM', opts MUST also contain domain,
 		*donain: required when setting frame option to 'ALLOW-FROM'. Ignored in all other cases, setting changed to 'SAMEORIGIN' fron 'ALLOW-FROM' if a string is not passed in. 
 
-**setFrameHeader(opts)**
+	-> returns a string that's a valid X-Frame-Options header setting 
+
+**frameOptionsWare(opts)**
 
 Middleware returning function that will set the X-Frame-Options in the header to the given option. If no option is supplied, or the option supplied is invalid, the option 'SAMEORIGIN' will be defaulted to. 
 
@@ -213,7 +216,7 @@ Middleware returning function that will set the X-Frame-Options in the header to
 ```
 // example usage: 
 
-const setFrame = setFrameHeader({setting: 'DENY'})
+const setFrame = frameOptionsWare({setting: 'DENY'})
 app.use(setFrame)
 
 ```
