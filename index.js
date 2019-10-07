@@ -216,6 +216,33 @@ const verifyReqTokenWare = (opts={}) => (req, res, next) => {
 
 }
 
+const validXssProtectionSetting = (opts={}) => {
+	const settingIsGiven = (opts.setting !== undefined && typeof +opts.setting === 'number')
+	let setting = settingIsGiven ? +opts.settings : 1
+	if(setting === 1) {
+		const modeKey = ['mode', 'report'].includes(opts.mode) ? opts.mode : 'mode'
+		const useReport = (
+			modeKey === 'report' 
+			&& opts.report 
+			&& opts.report.length
+		)
+		return `${setting}${useReport ? `; report=${opts.report}` : '; mode=block'}`
+	} else {
+		return '0'
+	}
+
+}
+
+const xssProtectionWare = (opts={}) => (req, res, next) => {
+	res.setHeader('X-XSS-Protection', validXssProtectionSetting(opts))
+	next()
+}
+
+const contentTypeWare = (opts={}) => (req, res, next) => {
+	res.setHeader('X-Content-Type-Options', 'nosniff')
+	next()
+}
+
 
 const frameOptionsWare = (opts={}) => (req, res, next) => {
 	res.setHeader('X-Frame-Options', validFrameOptSetting(opts))
@@ -223,9 +250,19 @@ const frameOptionsWare = (opts={}) => (req, res, next) => {
 }
 
 const obsidianWare = (opts={}) => (req, res, next) => {
-	const disableFrameOptionSet = typeof opts.disableFrameSecurity === 'boolean' ? opts.disableFrameSecurity : false
-	if(!disableFrameOptionSet) {
+	const disableFrameSecurity = typeof opts.disableFrameSecurity === 'boolean' ? opts.disableFrameSecurity : false
+	if(!disableFrameSecurity) {
 		res.setHeader('X-Frame-Options', validFrameOptSetting(opts.frameOpts))
+	}
+
+	const disableXssProtectionSecurity = typeof opts.disableXssProtectionSecurity === 'boolean' ? opts.disableXssProtectionSecurity : false
+	if(!disableXssProtectionSecurity) {
+		res.setHeader('X-XSS-Protection', validXssProtectionSetting(opts.xssProtectionOpts))
+	}
+
+	const disableContentTypeSecurity = typeof opts.disableContentTypeSecurity === 'boolean' ? opts.disableContentTypeSecurity : false
+	if(!disableContentTypeSecurity) {
+		res.setHeader('X-Content-Type-Options', 'nosniff')
 	}
 	
 	const isUnrestricted = (opts.unrestrictedPaths || []).includes(req.path)
@@ -265,9 +302,12 @@ module.exports = {
 	verifyToken,
 	verifyReqToken,
 	validFrameOptSetting,
+	validXssProtectionSetting,
 	obsidianWare,
 	verifyReqTokenWare,
 	frameOptionsWare,
+	xssProtectionWare,
+	contentTypeWare,
 	verifyRequest: verifyReqTokenWare,
 	setFrameHeader: frameOptionsWare,
 	verify: verifyHash

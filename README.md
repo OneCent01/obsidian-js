@@ -1,9 +1,13 @@
 # Obsidian-JS
 ## *Fortify your Node server with rock hard authentication*
 
+A light NodeJS library of pure functions useful for secure server-side authetnication. Password hashing, token generation, and response header setting. 
+
 <img style="float:right;" src="https://gamepedia.cursecdn.com/minecraft_gamepedia/2/23/Obsidian.png"/>
 
-A light library of pure functions useful for secure server-side development in Node.JS. Provides a set of easy-to-use tools that allows for rapid development of secure servers. It relies on argon2 for password hashing/verification and jsonwebtoken for token generation/authentication. 
+
+Provides a set of easy-to-use tools that allows for rapid development of secure servers. It relies on argon2 for password hashing/verification and jsonwebtoken for token generation/authentication. 
+
 
 Obsidian's full potential is realized when used in conjunction with an web API framework, such as ExpressJS. [A basic extensible server with secure user adding and authenticating can be accomplished with these two libraries in about 80 lines of code!](https://gist.github.com/OneCent01/fa52829c9770472d16a5af20b6f75a16)
 
@@ -28,9 +32,12 @@ const {
 	verifyToken,
 	verifyReqToken,
 	validFrameOptSetting,
+	validXssProtectionSetting,
 	obsidianWare,
 	verifyReqTokenWare,
-	frameOptionsWare
+	frameOptionsWare,
+	xssProtectionWare,
+	contentTypeWare
 } = obsidian
 ```
 
@@ -228,10 +235,13 @@ Middleware returning function validating tokens and applying security measures t
 
 	-opts: object, optional settings:
 		*unrestrictedPaths: array of strings, paths to ignore tokens on. i.e. ['/add-user', '/auth-user']
-		*disableFrameSecurity: boolean, setting this to true prevents X-Frame-Options from being set
-		*frameOpts: object, can contain a setting, must contain a domain if setting is 'ALLOW-FROM'
 		*verify: function, must return an object with a success property. uses `obsidian.verifyToken` by default
 		*verifyOpts: object, passed to the verfy function as the second argument after the token string. Matches the options used when generating the token. 
+		*disableFrameSecurity: boolean, setting this to true prevents X-Frame-Options from being set
+		*frameOpts: object, can contain a setting, must contain a domain if setting is 'ALLOW-FROM'
+		*disableXssProtectionSecurity: boolean, X-XSS-Protection will not be set if this is passed in as true
+		*xssProtectionOpts: object, setting (1 || 0), mode (mode || report), and report (URL string)
+		*disableContentTypeSecurity: boolean, X-Content-Type-Options header will be set to `nosniff` unless this is passed in as true
 
 	-> returns a middleware function performing token validation on the request and applying security measures to the response 
 
