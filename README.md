@@ -22,10 +22,13 @@ const {
 	secureRandom,
 	secureSalt,
 	hash,
-	verifyHash,
 	issueToken,
 	verifyToken,
-	verifyRequest
+	verifyRequest,
+	verifyHash,
+	validFrameOptSetting,
+	setFrameHeader,
+	obsidianWare
 } = obsidian
 ```
 
@@ -245,4 +248,6 @@ const obsidianGate = obsidianWare({
 		}
 	}
 })
+
+app.use(obsidianGate)
 ```
