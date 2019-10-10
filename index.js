@@ -178,7 +178,7 @@ const validFrameOptSetting = (opts={}) => {
 */
 
 // check the whether the token was sent in and if it's valid
-const verifyReqToken = (token, verify=verifyToken, opts={}) => (
+const verifyReqToken = (token, opts={}, verify=verifyToken) => (
 	token 
 	&& token.length 
 	&& verify(token, opts)
@@ -193,7 +193,7 @@ const verifyReqTokenWare = (opts={}) => (req, res, next) => {
 		// not unrestricted, now verify the token....
 		const headers = req.headers
 		const token = headers.authorization
-		const verification = verifyReqToken(token, opts.verify, opts.verifyOpts)
+		const verification = verifyReqToken(token, opts.verifyOpts, opts.verify)
 		
 		if(verification) {
 			if(verification.success) {
@@ -238,7 +238,7 @@ const xssProtectionWare = (opts={}) => (req, res, next) => {
 	next()
 }
 
-const contentTypeWare = (opts={}) => (req, res, next) => {
+const contentTypeWare = () => (req, res, next) => {
 	res.setHeader('X-Content-Type-Options', 'nosniff')
 	next()
 }
@@ -272,7 +272,7 @@ const obsidianWare = (opts={}) => (req, res, next) => {
 
 		const headers = req.headers
 		const token = headers.authorization
-		const verification = verifyReqToken(token, opts.verify, opts.verifyOpts)
+		const verification = verifyReqToken(token, opts.verifyOpts, opts.verify)
 		if(verification) {
 			if(verification.success) {
 				// attach the user data to the request object passed 

@@ -9,7 +9,7 @@ A light NodeJS library of pure functions useful for secure server-side authetnic
 Provides a set of easy-to-use tools that allows for rapid development of secure servers. It relies on argon2 for password hashing/verification and jsonwebtoken for token generation/authentication. 
 
 
-Obsidian's full potential is realized when used in conjunction with an web API framework, such as ExpressJS. [A basic extensible server with secure user adding and authenticating can be accomplished with these two libraries in about 80 lines of code!](https://gist.github.com/OneCent01/fa52829c9770472d16a5af20b6f75a16)
+Obsidian's full potential is realized when used in conjunction with an web API framework, such as ExpressJS. [A basic extensible server with secure user adding and authenticating can be accomplished with these two libraries in about 60 lines of code!](https://gist.github.com/OneCent01/fa52829c9770472d16a5af20b6f75a16)
 
 ## Installing
 
@@ -207,7 +207,7 @@ Synchronous function returning a string that's a valid X-Frame-Options header se
 
 	-opts: object, optional parameters for the setting
 		*setting: string, must be 'DENY', 'SAMEORIGIN', or 'ALLOW-FROM'. If 'ALLOW-FROM', opts MUST also contain domain,
-		*donain: required when setting frame option to 'ALLOW-FROM'. Ignored in all other cases, setting changed to 'SAMEORIGIN' fron 'ALLOW-FROM' if a string is not passed in. 
+		*donain: required when setting frame option to 'ALLOW-FROM'. Ignored in all other cases, setting changed to 'SAMEORIGIN' from 'ALLOW-FROM' if a domain string is not passed in. 
 
 	-> returns a string that's a valid X-Frame-Options header setting 
 
@@ -231,7 +231,7 @@ app.use(setFrame)
 
 **obsidianWare(opts)**
 
-Middleware returning function validating tokens and applying security measures to the response. Currently the only security measure applied to the reponse is setting the X-Frame-Options in the header (see `validFrameOptSetting`).
+Middleware returning function validating tokens and set security headers on the response. Three headers are set by default X-Frame-Options, X-XSS-Protection, and X-Content-Type-Options; by default they are set to `SAMEORIGIN`, `1; mode=block`, and `nosniff`, respectively. These can be turned off or customized to values required to work with your system with the options passed in.
 
 	-opts: object, optional settings:
 		*unrestrictedPaths: array of strings, paths to ignore tokens on. i.e. ['/add-user', '/auth-user']
@@ -265,4 +265,62 @@ const obsidianGate = obsidianWare({
 })
 
 app.use(obsidianGate)
+```
+
+
+**verifyReqToken(token, opts, verify)**
+
+Sychronous function checking whether given token is valid and decode it's payload. 
+
+	-token: token string
+	-opts: object, options to pass into verify token function
+	-verify: 
+
+
+**validXssProtectionSetting(opts)**
+
+Sychronous function returning a string which can be validly set on the X-XSS-Protection header. By default set to `1; mode=block`, the most secure setting.
+
+	-opts: object, optional settings
+		*setting: 1 or 0,
+		*mode: 'mode' or 'report'
+		*report: only used if mode is set to report. If mode is report and report is a non-empty string, the setting will be "1; report=REPORT_STRING"
+
+```
+// example usage: 
+
+const xssProtectionSetting = validXssProtectionSetting({
+	setting: 1, 
+	mode: 'report', 
+	report: 'https://reporting-uri'
+})
+
+app.use((req, res, next) => {
+	res.setHeader('X-XSS-Protection', xssProtectionSetting)
+	next()
+})
+
+```
+
+**xssProtectionWare(opts)**
+
+Middleware returning function setting the X-XSS-Protection header to a valid string. Opts passed to `validXssProtectionSetting` to generate the setting. 
+
+	-opts: object, optional settings
+		*setting: 1 or 0,
+		*mode: 'mode' or 'report'
+		*report: only used if mode is set to report. If mode is report and report is a non-empty string, the setting will be "1; report=REPORT_STRING"
+
+
+**contentTypeWare()**
+
+Middleware returning function setting the X-Content-Type-Options header in the response to `nosniff`. 
+
+```
+// example usage: 
+
+const secureContentTypeHeader = contentTypeWare()
+
+app.use(secureContentTypeHeader)
+
 ```
