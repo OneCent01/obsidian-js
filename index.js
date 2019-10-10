@@ -92,14 +92,6 @@ const issueToken = (data, opts={}) => {
 	return token
 }
 
-// Node JS base 64 conversion utilities
-var base64 = {
-	encode: unencoded => Buffer.from(unencoded || '').toString('base64'),
-	decode: encoded => Buffer.from(encoded || '', 'base64').toString('utf8'),
-	urlEncode: unencoded => base64.encode(unencoded).replace('\+', '-').replace('\/', '_').replace(/=+$/, ''),
-	urlDecode: encoded => base64.decode(`${encoded.replace('-', '+').replace('_', '/')}${new Array(encoded % 4).fill('=').join('')}`)
-}
-
 const defaultVerifyTokenOpts = {
 	headerOpts: {
 		"alg": "HS256",
